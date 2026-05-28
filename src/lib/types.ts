@@ -28,4 +28,5 @@ export interface Settings {
   welcomeSubtitle: string;
   prizePageTitle: string;  // 奖项页标题
   logo?: string;  // 公司 logo (base64)
+  showDept?: boolean;  // 抽奖及中奖界面是否显示部门选项
 }

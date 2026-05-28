@@ -326,6 +326,9 @@ export default function RollingBoard({ isRolling, candidates, currentWinners }: 
                           <div className={`relative bg-black/40 backdrop-blur-md border border-yellow-500/30 ${winnerCardPadding} rounded-xl flex flex-col items-center justify-center text-center hover:border-yellow-500/80 transition-all shadow-[0_0_30px_rgba(220,38,38,0.2)] min-h-[120px]`}>
                             {/* 仅显示名字，且加大字号 */}
                             <div className={`${winnerNameClass} font-bold text-white font-cinzel drop-shadow-md leading-tight break-words`}>{winner.name}</div>
+                            {settings.showDept && winner.dept && (
+                              <div className="text-yellow-400/90 text-sm md:text-base mt-2 font-medium drop-shadow-sm">{winner.dept}</div>
+                            )}
                           </div>
                         </motion.div>
                       ))}
@@ -344,6 +347,9 @@ export default function RollingBoard({ isRolling, candidates, currentWinners }: 
                            )}>
                              {item.name}
                            </span>
+                           {settings.showDept && item.dept && (
+                             <span className="text-white/60 text-xs mt-1.5 block font-sans">{item.dept}</span>
+                           )}
                         </div>
                       ))}
                     </motion.div>

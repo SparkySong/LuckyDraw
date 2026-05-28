@@ -82,6 +82,7 @@ export const useLotteryStore = create<LotteryState>()(
         welcomeSubtitle: '携手共进 · 再创辉煌',
         prizePageTitle: '奖项',
         logo: '',
+        showDept: false,
       },
 
       importParticipants: (csvText: string, includeControlledFields: boolean = false) => {

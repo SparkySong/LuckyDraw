@@ -77,6 +77,7 @@ export default function AdminPage() {
     prizePageTitle: settings.prizePageTitle || '',
     password: settings.password,
     logo: settings.logo || '',
+    showDept: settings.showDept || false,
   });
 
   // 当 settings 变化时同步到表单（首次加载或外部变化）
@@ -88,8 +89,9 @@ export default function AdminPage() {
       prizePageTitle: settings.prizePageTitle || '',
       password: settings.password,
       logo: settings.logo || '',
+      showDept: settings.showDept || false,
     });
-  }, [settings.title, settings.welcomeTitle, settings.welcomeSubtitle, settings.prizePageTitle, settings.password, settings.logo]);
+  }, [settings.title, settings.welcomeTitle, settings.welcomeSubtitle, settings.prizePageTitle, settings.password, settings.logo, settings.showDept]);
 
   // Search
   const [searchTerm, setSearchTerm] = useState("");
@@ -795,6 +797,16 @@ export default function AdminPage() {
                <div className="space-y-2">
                  <Label>奖项页标题</Label>
                  <Input value={settingsForm.prizePageTitle} onChange={e => setSettingsForm({...settingsForm, prizePageTitle: e.target.value})} />
+               </div>
+               <div className="flex items-center justify-between border p-3 rounded-lg bg-muted/20">
+                 <div className="space-y-0.5">
+                   <Label>显示部门名称</Label>
+                   <p className="text-xs text-muted-foreground">在抽奖滚动和大屏中奖展示时，显示参与者的所属部门。</p>
+                 </div>
+                 <Switch
+                   checked={settingsForm.showDept}
+                   onCheckedChange={checked => setSettingsForm({...settingsForm, showDept: checked})}
+                 />
                </div>
                <div className="space-y-2">
                  <Label>后台管理密码</Label>
