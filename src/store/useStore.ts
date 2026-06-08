@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { nanoid } from 'nanoid';
 import Papa from 'papaparse';
+import { toast } from 'sonner';
 import type { Participant, Winner, Prize, Settings } from '../lib/types';
 import { drawWinners } from '../lib/lottery-logic';
 
@@ -76,9 +77,9 @@ export const useLotteryStore = create<LotteryState>()(
       viewMode: 'welcome',
       
       settings: {
-        title: '2027 年会大屏抽奖',
+        title: '2027 端午大屏抽奖',
         password: 'appinn',
-        welcomeTitle: '2027 NEW YEAR PARTY',
+        welcomeTitle: '2027 端午安康',
         welcomeSubtitle: '携手共进 · 再创辉煌',
         prizePageTitle: '奖项',
         logo: '',
@@ -174,6 +175,32 @@ export const useLotteryStore = create<LotteryState>()(
           return;
         }
 
+        // 部门配额校验：检查每个部门的候选人数是否足够，以及总候选池是否足够
+        const deptQuotas = currentPrize.deptQuotas;
+        if (deptQuotas && Object.keys(deptQuotas).length > 0) {
+          // 检查总候选池是否足够
+          if (finalPool.length < currentPrize.count) {
+            toast.error(`候选人总数不足，需 ${currentPrize.count} 人，当前仅 ${finalPool.length} 人`);
+            set({ isRolling: false, roundWinners: [] });
+            return;
+          }
+          // 按部门分组候选池
+          const deptGroups: Record<string, number> = {};
+          for (const p of finalPool) {
+            const dept = p.dept || "未分组";
+            deptGroups[dept] = (deptGroups[dept] || 0) + 1;
+          }
+          for (const [dept, quota] of Object.entries(deptQuotas)) {
+            if (quota <= 0) continue;
+            const available = deptGroups[dept] || 0;
+            if (available < quota) {
+              toast.error(`${dept} 候选人不足，需 ${quota} 人，当前仅 ${available} 人`);
+              set({ isRolling: false, roundWinners: [] });
+              return;
+            }
+          }
+        }
+
         set({ isRolling: true, roundWinners: [], viewMode: 'lottery' });
       },
 
@@ -204,7 +231,7 @@ export const useLotteryStore = create<LotteryState>()(
         // 确保 validPool 排除掉内定了其他奖项的人
         const finalPool = validPool.filter(p => !p.mustWinPrizeId || p.mustWinPrizeId === currentPrizeId);
         
-        const newWinners = drawWinners(finalPool, currentPrize.count, mustWinCandidates);
+        const newWinners = drawWinners(finalPool, currentPrize.count, mustWinCandidates, currentPrize.deptQuotas);
 
         set({ 
           isRolling: false, 

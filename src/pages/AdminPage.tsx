@@ -69,7 +69,10 @@ export default function AdminPage() {
   // Prize Edit State
   const [editingPrize, setEditingPrize] = useState<any>(null);
   const [isPrizeDialogOpen, setIsPrizeDialogOpen] = useState(false);
-  const [prizeForm, setPrizeForm] = useState({ name: "", count: 1, description: "" });
+  const [prizeForm, setPrizeForm] = useState({ name: "", count: 1, description: "", deptQuotas: {} as Record<string, number> });
+  const [countInput, setCountInput] = useState("1");
+  const [deptSearch, setDeptSearch] = useState("");
+  const [deptPopoverOpen, setDeptPopoverOpen] = useState(false);
 
   // Settings Form State
   const [settingsForm, setSettingsForm] = useState({
@@ -327,7 +330,8 @@ export default function AdminPage() {
   // Prize edit functions
   const openAddPrizeDialog = () => {
     setEditingPrize(null);
-    setPrizeForm({ name: "", count: 1, description: "" });
+    setPrizeForm({ name: "", count: 1, description: "", deptQuotas: {} });
+    setCountInput("1");
     setIsPrizeDialogOpen(true);
   };
 
@@ -336,8 +340,10 @@ export default function AdminPage() {
     setPrizeForm({
       name: prize.name,
       count: prize.count,
-      description: prize.description || ""
+      description: prize.description || "",
+      deptQuotas: prize.deptQuotas ? { ...prize.deptQuotas } : {}
     });
+    setCountInput(String(prize.count));
     setIsPrizeDialogOpen(true);
   };
 
@@ -351,15 +357,43 @@ export default function AdminPage() {
       return;
     }
 
+    // 过滤掉配额为0的部门
+    const filteredQuotas: Record<string, number> = {};
+    for (const [dept, quota] of Object.entries(prizeForm.deptQuotas)) {
+      if (quota > 0) filteredQuotas[dept] = quota;
+    }
+    const hasDeptQuotas = Object.keys(filteredQuotas).length > 0;
+
+    // 中奖人数不低于配额总和，不足时自动调整
+    let finalCount = prizeForm.count;
+    if (hasDeptQuotas) {
+      const quotaSum = Object.values(filteredQuotas).reduce((s, q) => s + q, 0);
+      if (finalCount < quotaSum) {
+        finalCount = quotaSum;
+      }
+    }
+
+    const prizeData = {
+      name: prizeForm.name,
+      count: finalCount,
+      description: prizeForm.description,
+      deptQuotas: hasDeptQuotas ? filteredQuotas : undefined,
+    };
+
     if (editingPrize) {
-      updatePrize(editingPrize.id, prizeForm);
+      updatePrize(editingPrize.id, prizeData);
       toast.success("奖项更新成功");
     } else {
-      addPrize(prizeForm.name, prizeForm.count);
+      addPrize(prizeForm.name, finalCount);
       const newPrizes = useLotteryStore.getState().prizes;
       const newPrize = newPrizes[newPrizes.length - 1];
-      if (newPrize && prizeForm.description) {
-        updatePrize(newPrize.id, { description: prizeForm.description });
+      if (newPrize) {
+        const updates: Record<string, any> = {};
+        if (prizeForm.description) updates.description = prizeForm.description;
+        if (hasDeptQuotas) updates.deptQuotas = filteredQuotas;
+        if (Object.keys(updates).length > 0) {
+          updatePrize(newPrize.id, updates);
+        }
       }
       toast.success("奖项添加成功");
     }
@@ -437,7 +471,29 @@ export default function AdminPage() {
   const finalPool = currentPrizeId
     ? validPool.filter(p => !p.mustWinPrizeId || p.mustWinPrizeId === currentPrizeId)
     : [];
-  const canStart = Boolean(currentPrize) && finalPool.length > 0;
+
+  // canStart 判断：支持部门配额校验
+  let canStart = Boolean(currentPrize) && finalPool.length > 0;
+  if (canStart && currentPrize?.deptQuotas && Object.keys(currentPrize.deptQuotas).length > 0) {
+    // 检查总候选池是否足够
+    if (finalPool.length < (currentPrize?.count || 0)) {
+      canStart = false;
+    } else {
+      // 检查每个部门候选人数是否足够配额
+      const deptCounts: Record<string, number> = {};
+      for (const p of finalPool) {
+        const dept = p.dept || "未分组";
+        deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+      }
+      for (const [dept, quota] of Object.entries(currentPrize.deptQuotas)) {
+        if (quota > 0 && (deptCounts[dept] || 0) < quota) {
+          canStart = false;
+          break;
+        }
+      }
+    }
+  }
+
   const startDisabled = !isRolling && !canStart;
 
   return (
@@ -534,10 +590,15 @@ export default function AdminPage() {
                       variant={currentPrizeId === p.id ? "default" : "outline"}
                       onClick={() => selectPrize(p.id)}
                       onDoubleClick={() => !isRolling && openEditPrizeDialog(p)}
-                      className="min-w-[100px] relative group"
+                      className="min-w-[100px] relative group flex-col gap-0.5 py-1.5 h-auto"
                       disabled={isRolling}
                     >
-                      {p.name} ({p.count}人)
+                      <span>{p.name} ({p.count}人)</span>
+                      {p.deptQuotas && Object.keys(p.deptQuotas).length > 0 && (
+                        <span className="text-[10px] opacity-70 font-normal">
+                          {Object.entries(p.deptQuotas).map(([d, q]) => `${d}×${q}`).join(' ')}
+                        </span>
+                      )}
                       {!isRolling && (
                         <span
                           className="absolute -top-1 -right-1 hidden group-hover:flex w-4 h-4 bg-destructive text-destructive-foreground rounded-full items-center justify-center text-xs cursor-pointer"
@@ -980,7 +1041,7 @@ export default function AdminPage() {
 
       {/* Prize Edit/Add Dialog */}
       <Dialog open={isPrizeDialogOpen} onOpenChange={setIsPrizeDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader>
                 <DialogTitle>{editingPrize ? "编辑奖项" : "添加新奖项"}</DialogTitle>
             </DialogHeader>
@@ -989,9 +1050,164 @@ export default function AdminPage() {
                     <Label className="text-right">奖项名称</Label>
                     <Input className="col-span-3" placeholder="如：一等奖" value={prizeForm.name} onChange={e => setPrizeForm({...prizeForm, name: e.target.value})} />
                 </div>
+
+                {/* 部门配额区域 */}
+                {participants.length > 0 && (() => {
+                  const allDepts = Array.from(new Set(participants.map(p => p.dept).filter(Boolean)));
+                  const addedDepts = Object.keys(prizeForm.deptQuotas).filter(d => prizeForm.deptQuotas[d] >= 1);
+                  const availableDepts = allDepts.filter(d => !addedDepts.includes(d));
+                  const filteredDepts = deptSearch
+                    ? availableDepts.filter(d => d.toLowerCase().includes(deptSearch.toLowerCase()))
+                    : availableDepts;
+                  const hasQuotas = addedDepts.length > 0;
+                  const totalQuota = addedDepts.reduce((s, d) => s + (prizeForm.deptQuotas[d] || 0), 0);
+                  return allDepts.length > 0 ? (
+                    <div className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-semibold">部门配额</Label>
+                        <span className="text-xs text-muted-foreground">设置后该部门恰好中指定人数</span>
+                      </div>
+
+                      {/* 已添加的部门 */}
+                      {addedDepts.map(dept => {
+                        const deptCount = participants.filter(p => p.dept === dept && !winnerIds.has(p.id)).length;
+                        const quota = prizeForm.deptQuotas[dept] || 0;
+                        return (
+                          <div key={dept} className="grid grid-cols-[1fr_80px_60px_28px] items-center gap-2">
+                            <span className="text-sm truncate">{dept}</span>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={deptCount}
+                              className="h-8 text-center"
+                              value={quota}
+                              onChange={e => {
+                                const val = parseInt(e.target.value) || 1;
+                                setPrizeForm(prev => ({
+                                  ...prev,
+                                  deptQuotas: { ...prev.deptQuotas, [dept]: Math.max(1, Math.min(val, deptCount)) }
+                                }));
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground text-right">/{deptCount}人</span>
+                            <button
+                              type="button"
+                              className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                              onClick={() => {
+                                setPrizeForm(prev => {
+                                  const next = { ...prev.deptQuotas };
+                                  delete next[dept];
+                                  return { ...prev, deptQuotas: next };
+                                });
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+
+                      {/* 添加部门按钮 + 搜索弹出框 */}
+                      {availableDepts.length > 0 && (
+                        <Popover open={deptPopoverOpen} onOpenChange={setDeptPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-full h-8 border border-dashed rounded-md text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-1"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> 添加部门
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[260px] p-2" align="start">
+                            <Input
+                              placeholder="搜索部门..."
+                              className="h-8 mb-2"
+                              value={deptSearch}
+                              onChange={e => setDeptSearch(e.target.value)}
+                              autoFocus
+                            />
+                            <div className="max-h-[160px] overflow-y-auto space-y-0.5">
+                              {filteredDepts.length === 0 ? (
+                                <div className="text-xs text-muted-foreground text-center py-2">无匹配部门</div>
+                              ) : (
+                                filteredDepts.map(dept => {
+                                  const deptCount = participants.filter(p => p.dept === dept && !winnerIds.has(p.id)).length;
+                                  return (
+                                    <button
+                                      key={dept}
+                                      type="button"
+                                      className="w-full text-left px-2.5 py-1.5 rounded text-sm hover:bg-accent flex items-center justify-between"
+                                      onClick={() => {
+                                        setPrizeForm(prev => ({
+                                          ...prev,
+                                          deptQuotas: { ...prev.deptQuotas, [dept]: 1 }
+                                        }));
+                                        setDeptSearch("");
+                                        setDeptPopoverOpen(false);
+                                      }}
+                                    >
+                                      <span>{dept}</span>
+                                      <span className="text-xs text-muted-foreground">{deptCount}人</span>
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+
+                      {/* 总中奖人数汇总 */}
+                      {hasQuotas && (
+                        <div className="pt-2 border-t flex items-center justify-between">
+                          <span className="text-sm font-medium">总中奖人数</span>
+                          <Badge variant="secondary" className="text-base px-3 py-1">{totalQuota} 人</Badge>
+                        </div>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
+
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label className="text-right">中奖人数</Label>
-                    <Input type="number" min={1} className="col-span-3" value={prizeForm.count} onChange={e => setPrizeForm({...prizeForm, count: parseInt(e.target.value)||1})} />
+                    <div className="col-span-3 space-y-1">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={countInput}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setCountInput(v);
+                          const n = parseInt(v);
+                          if (!isNaN(n) && n >= 1) setPrizeForm(prev => ({ ...prev, count: n }));
+                        }}
+                        onBlur={() => {
+                          const n = parseInt(countInput);
+                          if (isNaN(n) || n < 1) {
+                            setPrizeForm(prev => ({ ...prev, count: 1 }));
+                            setCountInput("1");
+                          } else {
+                            setPrizeForm(prev => ({ ...prev, count: n }));
+                            setCountInput(String(n));
+                          }
+                        }}
+                      />
+                      {(() => {
+                        const quotaSum = Object.values(prizeForm.deptQuotas).reduce((s, q) => s + (q > 0 ? q : 0), 0);
+                        const hasQuotas = quotaSum > 0;
+                        if (!hasQuotas) return null;
+                        const currentCount = parseInt(countInput) || prizeForm.count;
+                        const leftover = currentCount - quotaSum;
+                        return (
+                          <div className="text-xs text-muted-foreground">
+                            部门配额已占 <span className="text-foreground font-medium">{quotaSum}</span> 人
+                            {leftover > 0 && <>，剩余 <span className="text-foreground font-medium">{leftover}</span> 人随机抽取</>}
+                            {leftover < 0 && <span className="text-amber-500"> — 保存时将自动调整为 {quotaSum} 人</span>}
+                            {leftover === 0 && <span className="text-green-500"> — 已分配完毕</span>}
+                          </div>
+                        );
+                      })()}
+                    </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label className="text-right">奖品描述</Label>

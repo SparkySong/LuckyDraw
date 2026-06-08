@@ -19,6 +19,7 @@ export interface Prize {
   count: number;
   description?: string;  // 奖品描述（如：iPhone 16 Pro）
   image?: string;
+  deptQuotas?: Record<string, number>;  // 部门配额：{ "技术部": 3, "市场部": 2 }，设置后恰好中该人数
 }
 
 export interface Settings {
