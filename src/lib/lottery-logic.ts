@@ -66,7 +66,7 @@ export function drawWinners(
 }
 
 /**
- * 部门配额模式：每个部门恰好中配额数量的人，剩余名额从全部候选池随机抽取
+ * 部门配额模式：内定者优先，部门配额次之，剩余名额随机填充
  */
 function drawWithDeptQuotas(
   pool: Participant[],
@@ -85,26 +85,27 @@ function drawWithDeptQuotas(
     deptGroups[dept].push(p);
   }
 
-  // 1. 按部门配额抽取（恰好该人数）
+  // 1. 最高优先级：内定者先中奖（不限部门，占用对应部门配额名额）
+  if (mustWinList.length > 0) {
+    const mustWinCandidates = shuffle(mustWinList.filter(p => !winnerIds.has(p.id)));
+    const takeCount = Math.min(totalCount, mustWinCandidates.length);
+    for (let i = 0; i < takeCount; i++) {
+      winners.push(mustWinCandidates[i]);
+      winnerIds.add(mustWinCandidates[i].id);
+    }
+  }
+
+  // 2. 按部门配额抽取（内定者已占用名额的部门，减少该部门需抽取数）
   for (const [dept, quota] of Object.entries(deptQuotas)) {
     if (quota <= 0) continue;
 
-    const deptCandidates = deptGroups[dept] || [];
+    // 该部门已被内定者占用的名额数
+    const deptMustWinCount = winners.filter(w => (w.dept || "未分组") === dept).length;
+    const remaining = quota - deptMustWinCount;
 
-    // 该部门的内定者（优先占用配额名额）
-    const deptMustWin = shuffle(mustWinList.filter(p => (p.dept || "未分组") === dept && !winnerIds.has(p.id)));
-    const mustWinTake = Math.min(quota, deptMustWin.length);
-
-    for (let i = 0; i < mustWinTake; i++) {
-      winners.push(deptMustWin[i]);
-      winnerIds.add(deptMustWin[i].id);
-    }
-
-    // 剩余名额从该部门候选池中随机抽取
-    const remaining = quota - mustWinTake;
     if (remaining > 0) {
-      const available = deptCandidates.filter(p => !winnerIds.has(p.id));
-      const drawn = weightedDraw(available, remaining);
+      const deptCandidates = (deptGroups[dept] || []).filter(p => !winnerIds.has(p.id));
+      const drawn = weightedDraw(deptCandidates, remaining);
       for (const p of drawn) {
         winners.push(p);
         winnerIds.add(p.id);
@@ -112,10 +113,9 @@ function drawWithDeptQuotas(
     }
   }
 
-  // 2. 填充剩余名额：从全部候选池中随机抽取（不限部门）
-  const quotaSum = Object.values(deptQuotas).reduce((s, q) => s + q, 0);
-  const leftover = totalCount - quotaSum;
-  if (leftover > 0) {
+  // 3. 填充剩余名额：从全部候选池中随机抽取（不限部门）
+  if (winners.length < totalCount) {
+    const leftover = totalCount - winners.length;
     const remaining = pool.filter(p => !winnerIds.has(p.id));
     const drawn = weightedDraw(remaining, leftover);
     for (const p of drawn) {

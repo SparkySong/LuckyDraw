@@ -73,6 +73,7 @@ export default function AdminPage() {
   const [countInput, setCountInput] = useState("1");
   const [deptSearch, setDeptSearch] = useState("");
   const [deptPopoverOpen, setDeptPopoverOpen] = useState(false);
+  const [quotaInputs, setQuotaInputs] = useState<Record<string, string>>({});
   const deptSelectLockRef = useRef(false);
 
   // Settings Form State
@@ -333,6 +334,7 @@ export default function AdminPage() {
     setEditingPrize(null);
     setPrizeForm({ name: "", count: 1, description: "", deptQuotas: {} });
     setCountInput("1");
+    setQuotaInputs({});
     setIsPrizeDialogOpen(true);
   };
 
@@ -345,6 +347,7 @@ export default function AdminPage() {
       deptQuotas: prize.deptQuotas ? { ...prize.deptQuotas } : {}
     });
     setCountInput(String(prize.count));
+    setQuotaInputs({});
     setIsPrizeDialogOpen(true);
   };
 
@@ -527,13 +530,13 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-6 overflow-hidden flex flex-col gap-6">
+      <main className="flex-1 p-6 flex flex-col gap-6">
         
         {/* 核心控制区 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-shrink-0">
           {/* 左侧：奖项选择与控制 */}
           <Card className="lg:col-span-2 border-primary/20 shadow-md">
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle>现场控制 (Live Control)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -584,7 +587,7 @@ export default function AdminPage() {
               {/* 奖项切换 */}
               <div className="space-y-2">
                 <Label>当前抽取的奖项 <span className="text-xs text-muted-foreground">(点击选择，双击编辑)</span></Label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                   {prizes.map(p => (
                     <Button
                       key={p.id}
@@ -644,9 +647,9 @@ export default function AdminPage() {
           </Card>
 
           {/* 右侧：本轮结果预览 */}
-          <Card className="h-full flex flex-col">
-            <CardHeader><CardTitle>本轮结果预览</CardTitle></CardHeader>
-            <CardContent className="flex-1 overflow-y-auto">
+          <Card className="gap-3 py-3 max-h-[480px] overflow-hidden">
+            <CardHeader className="pb-2 px-4"><CardTitle className="text-base">本轮结果预览</CardTitle></CardHeader>
+            <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-4">
                {roundWinners.length === 0 ? (
                  <div className="text-center text-muted-foreground py-8">等待开奖...</div>
                ) : (
@@ -673,7 +676,7 @@ export default function AdminPage() {
         </div>
 
         {/* 数据管理区 */}
-        <Tabs defaultValue="participants" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs defaultValue="participants" className="flex flex-col">
           <TabsList>
             <TabsTrigger value="participants">人员名单管理</TabsTrigger>
             <TabsTrigger value="import">批量导入</TabsTrigger>
@@ -681,9 +684,9 @@ export default function AdminPage() {
             <TabsTrigger value="settings">系统设置</TabsTrigger>
           </TabsList>
           
-          <div className="flex-1 border rounded-md mt-2 bg-card overflow-hidden flex flex-col">
+          <div className="border rounded-md mt-2 bg-card flex flex-col">
             {/* Tab: 人员名单列表 */}
-            <TabsContent value="participants" className="flex-1 flex flex-col p-4 m-0 overflow-hidden">
+            <TabsContent value="participants" className="flex flex-col p-4 m-0">
                 <div className="flex gap-4 items-center justify-between mb-4 flex-wrap">
                     <div className="flex gap-2 items-center flex-1">
                         <div className="relative w-full max-w-sm">
@@ -711,7 +714,7 @@ export default function AdminPage() {
                     )}
                 </div>
 
-                <div className="flex-1 overflow-auto border rounded-md">
+                <div className="max-h-[55vh] overflow-auto border rounded-md scrollbar-thin">
                     <Table>
                         <TableHeader className="bg-muted/50 sticky top-0 z-10">
                             <TableRow>
@@ -808,7 +811,7 @@ export default function AdminPage() {
             </TabsContent>
 
             {/* Tab: 中奖记录 */}
-            <TabsContent value="winners" className="mt-0 p-4 overflow-auto">
+            <TabsContent value="winners" className="mt-0 p-4">
                <div className="flex justify-between mb-4">
                  <h3 className="font-bold text-lg">历史中奖记录</h3>
                  <div className="flex gap-2">
@@ -816,6 +819,7 @@ export default function AdminPage() {
                    <Button variant="outline" size="sm" onClick={() => { if(confirm("清空历史记录？")) resetWinners(); }}>重置记录</Button>
                  </div>
                </div>
+               <div className="max-h-[55vh] overflow-auto scrollbar-thin">
                <Table>
                  <TableHeader><TableRow><TableHead>姓名</TableHead><TableHead>部门</TableHead><TableHead>奖项</TableHead><TableHead>时间</TableHead></TableRow></TableHeader>
                  <TableBody>
@@ -829,10 +833,11 @@ export default function AdminPage() {
                    ))}
                  </TableBody>
                </Table>
+               </div>
             </TabsContent>
 
             {/* Tab: 设置 */}
-            <TabsContent value="settings" className="mt-0 p-4 max-w-md space-y-6">
+            <TabsContent value="settings" className="mt-0 p-6 max-w-lg space-y-6">
                <div className="space-y-2">
                  <Label>抽奖页主标题</Label>
                  <Input value={settingsForm.title} onChange={e => setSettingsForm({...settingsForm, title: e.target.value})} />
@@ -1070,24 +1075,38 @@ export default function AdminPage() {
                       </div>
 
                       {/* 已添加的部门 */}
+                      <div className="max-h-[200px] overflow-y-auto space-y-1.5 scrollbar-thin">
                       {addedDepts.map(dept => {
                         const deptCount = participants.filter(p => p.dept === dept && !winnerIds.has(p.id)).length;
                         const quota = prizeForm.deptQuotas[dept] || 0;
+                        const displayVal = quotaInputs[dept] ?? String(quota);
                         return (
                           <div key={dept} className="grid grid-cols-[1fr_80px_60px_28px] items-center gap-2">
                             <span className="text-sm truncate">{dept}</span>
                             <Input
-                              type="number"
-                              min={1}
-                              max={deptCount}
+                              type="text"
+                              inputMode="numeric"
                               className="h-8 text-center"
-                              value={quota}
+                              value={displayVal}
                               onChange={e => {
-                                const val = parseInt(e.target.value) || 1;
+                                const v = e.target.value;
+                                setQuotaInputs(prev => ({ ...prev, [dept]: v }));
+                                const n = parseInt(v);
+                                if (!isNaN(n) && n >= 1) {
+                                  setPrizeForm(prev => ({
+                                    ...prev,
+                                    deptQuotas: { ...prev.deptQuotas, [dept]: Math.min(n, deptCount) }
+                                  }));
+                                }
+                              }}
+                              onBlur={() => {
+                                const n = parseInt(quotaInputs[dept] ?? "");
+                                const finalVal = isNaN(n) || n < 1 ? 1 : Math.min(n, deptCount);
                                 setPrizeForm(prev => ({
                                   ...prev,
-                                  deptQuotas: { ...prev.deptQuotas, [dept]: Math.max(1, Math.min(val, deptCount)) }
+                                  deptQuotas: { ...prev.deptQuotas, [dept]: finalVal }
                                 }));
+                                setQuotaInputs(prev => ({ ...prev, [dept]: String(finalVal) }));
                               }}
                             />
                             <span className="text-xs text-muted-foreground text-right">/{deptCount}人</span>
@@ -1100,6 +1119,11 @@ export default function AdminPage() {
                                   delete next[dept];
                                   return { ...prev, deptQuotas: next };
                                 });
+                                setQuotaInputs(prev => {
+                                  const next = { ...prev };
+                                  delete next[dept];
+                                  return next;
+                                });
                               }}
                             >
                               ×
@@ -1107,6 +1131,7 @@ export default function AdminPage() {
                           </div>
                         );
                       })}
+                      </div>
 
                       {/* 添加部门按钮 + 搜索弹出框 */}
                       {availableDepts.length > 0 && (

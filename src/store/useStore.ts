@@ -77,9 +77,9 @@ export const useLotteryStore = create<LotteryState>()(
       viewMode: 'welcome',
       
       settings: {
-        title: '2027 端午大屏抽奖',
+        title: '2026 端午大屏抽奖',
         password: 'appinn',
-        welcomeTitle: '2027 端午安康',
+        welcomeTitle: '2026 端午安康',
         welcomeSubtitle: '携手共进 · 再创辉煌',
         prizePageTitle: '奖项',
         logo: '',
