@@ -18,6 +18,7 @@ import {
   ShieldAlert, MonitorPlay, LogOut,
   Plus, Pencil, Search, Sun, Moon
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { SAMPLE_CSV } from "@/assets/sample";
@@ -514,8 +515,18 @@ export default function AdminPage() {
         </div>
         <div className="flex items-center gap-3">
 
-           <Button variant="ghost" size="icon" onClick={toggleTheme} title="切换主题" className="w-8 h-8">
-             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+           <Button variant="ghost" size="icon" onClick={toggleTheme} title="切换主题" className="w-8 h-8 overflow-hidden">
+             <AnimatePresence mode="wait" initial={false}>
+               <motion.div
+                 key={theme}
+                 initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                 animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                 exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                 transition={{ duration: 0.3, ease: "easeInOut" }}
+               >
+                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+               </motion.div>
+             </AnimatePresence>
            </Button>
            <Button variant="outline" size="sm" asChild>
              <a href="#/" target="_blank"><MonitorPlay className="w-4 h-4 mr-2"/> 打开大屏端</a>

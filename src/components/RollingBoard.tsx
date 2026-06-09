@@ -393,14 +393,14 @@ export default function RollingBoard({ isRolling, candidates, currentWinners }: 
               >
                 {settings.prizePageTitle || "今日奖项"}
               </motion.h2>
-              <div className="flex flex-wrap justify-center gap-8 w-full">
+              <div className="flex flex-nowrap justify-center gap-8 w-full p-6 -m-6">
                 {prizes.map((prize, idx) => (
                   <motion.div
                     key={prize.id}
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 + idx * 0.1, type: "spring" }}
-                    className="relative group w-full max-w-md"
+                    className="relative group max-w-md flex-1"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-amber-400/15 dark:from-yellow-600/30 to-red-300/15 dark:to-red-900/40 blur-2xl rounded-3xl group-hover:blur-3xl transition-all" />
                     <div className="relative bg-white/70 dark:bg-black/60 backdrop-blur-md border-2 border-amber-400/50 dark:border-yellow-500/40 p-8 rounded-3xl flex flex-col items-center justify-center text-center hover:border-amber-500 dark:hover:border-yellow-500/80 transition-all shadow-[0_4px_30px_rgba(180,130,0,0.12)] dark:shadow-[0_0_40px_rgba(255,215,0,0.15)] min-h-[280px]">
