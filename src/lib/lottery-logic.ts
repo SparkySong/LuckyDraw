@@ -56,13 +56,17 @@ export function drawWinners(
   mustWinList: Participant[],
   deptQuotas?: Record<string, number>
 ): Participant[] {
+  let winners: Participant[];
   // 如果有部门配额，走部门配额逻辑（剩余名额随机填充）
   if (deptQuotas && Object.keys(deptQuotas).length > 0) {
-    return drawWithDeptQuotas(pool, count, mustWinList, deptQuotas);
+    winners = drawWithDeptQuotas(pool, count, mustWinList, deptQuotas);
+  } else {
+    // 否则走原有逻辑（向后兼容）
+    winners = drawOriginal(pool, count, mustWinList);
   }
 
-  // 否则走原有逻辑（向后兼容）
-  return drawOriginal(pool, count, mustWinList);
+  // 打乱中奖名单顺序，避免同部门人员聚集展示引起质疑
+  return shuffle(winners);
 }
 
 /**
