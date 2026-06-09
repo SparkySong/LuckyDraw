@@ -22,6 +22,9 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   base: "./",
+  server: {
+    host: true,
+  },
   build: { 
     outDir: "dist", 
     emptyOutDir: true,
