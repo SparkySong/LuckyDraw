@@ -9,6 +9,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -40,6 +50,8 @@ export default function AdminPage() {
   const { theme, toggleTheme } = useTheme();
 
   const [csvText, setCsvText] = useState("");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showClearDbConfirm, setShowClearDbConfirm] = useState(false);
 
 
   // 受控模式解锁：通过 URL 参数 ?controlled=1 解锁必中/禁中/权重功能
@@ -809,7 +821,7 @@ export default function AdminPage() {
                         <div>已中奖: {winners.length}</div>
                         <div>剩余: {participants.length - winners.length}</div>
                     </div>
-                    <Button variant="destructive" className="w-full" onClick={() => { if(confirm("确定要清空所有人员数据吗？不可恢复！")) fullReset(); }}>
+                    <Button variant="destructive" className="w-full" onClick={() => setShowClearDbConfirm(true)}>
                       <Trash className="w-4 h-4 mr-2"/> 清空数据库
                     </Button>
                  </div>
@@ -822,7 +834,7 @@ export default function AdminPage() {
                  <h3 className="font-bold text-lg">历史中奖记录</h3>
                  <div className="flex gap-2">
                    <Button variant="outline" size="sm" onClick={handleExportWinnersImage}>导出图片</Button>
-                   <Button variant="outline" size="sm" onClick={() => { if(confirm("清空历史记录？")) resetWinners(); }}>重置记录</Button>
+                   <Button variant="outline" size="sm" onClick={() => setShowResetConfirm(true)}>重置记录</Button>
                  </div>
                </div>
                <div className="max-h-[55vh] overflow-auto scrollbar-thin">
@@ -1259,6 +1271,54 @@ export default function AdminPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 重置记录确认弹框 */}
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认清空历史记录？</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将清空所有中奖记录，已中奖人员会恢复为未中奖状态，可重新参与抽奖。此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowResetConfirm(false)}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                resetWinners();
+                toast.success("历史记录已清空");
+                setShowResetConfirm(false);
+              }}
+            >
+              确认清空
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 清空数据库确认弹框 */}
+      <AlertDialog open={showClearDbConfirm} onOpenChange={setShowClearDbConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认清空所有数据？</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将删除所有人员、奖项、中奖记录等全部数据，不可恢复！请谨慎操作。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowClearDbConfirm(false)}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                fullReset();
+                toast.success("数据库已清空");
+                setShowClearDbConfirm(false);
+              }}
+            >
+              确认清空
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
